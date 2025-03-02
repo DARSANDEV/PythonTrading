@@ -1,3 +1,5 @@
+#pip install ipython
+
 import json
 import pandas as pd
 from datetime import datetime
