@@ -9,7 +9,7 @@ ist = pytz.timezone('Asia/Kolkata')
 error_logs = []
 
 class DataCollector:
-    def __init__(self, symbol="NSE:NIFTY", time_frame="5", period=1000):
+    def __init__(self, symbol="NSE:NIFTY", time_frame="5", period=100):
         self.socketUrl = "wss://data.tradingview.com/socket.io/websocket"
         self.symbol = symbol
         self.time_frame = time_frame
@@ -77,7 +77,7 @@ class DataCollector:
         self.ws.run_forever()
 
 # Function to fetch live data
-def get_live_data():
-    collector = DataCollector()
+def get_live_data(symbol="NSE:NIFTY", time_frame="5", period=100):
+    collector = DataCollector(symbol,time_frame,period)
     collector.start()
     return collector.df
