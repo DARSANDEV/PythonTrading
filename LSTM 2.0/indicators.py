@@ -1,4 +1,4 @@
-import pandas as pd
+
 import pandas_ta as ta
 
 def add_indicators(data):
@@ -21,6 +21,5 @@ def add_indicators(data):
     data["S2"] = data["Pivot"] - (data["High"] - data["Low"])
 
     data[["Pivot", "S1", "S2", "R1", "R2"]] = data[["Pivot", "S1", "S2", "R1", "R2"]].round(2)
-    data.dropna(inplace=True)
-    data.reset_index(inplace=True)
+    
     return data
