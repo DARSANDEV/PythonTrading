@@ -5,11 +5,18 @@ import pytz
 import websocket
 from IPython.display import clear_output, display
 
+# Set IST timezone
 ist = pytz.timezone('Asia/Kolkata')
+
+# List to store any error messages
 error_logs = []
 
 class DataCollector:
     def __init__(self, symbol="NSE:NIFTY", time_frame="5", period=100):
+        """
+        Initializes the DataCollector with the desired symbol, time frame, and period.
+        Sets up WebSocket URL and initializes an empty DataFrame to store the candlestick data.
+        """
         self.socketUrl = "wss://data.tradingview.com/socket.io/websocket"
         self.symbol = symbol
         self.time_frame = time_frame
@@ -18,7 +25,11 @@ class DataCollector:
         self.ws = None
 
     def on_message(self, ws, message):
-        """Handles incoming WebSocket messages."""
+        """
+        Callback for processing incoming WebSocket messages.
+        Parses candlestick data from JSON and appends it to the DataFrame.
+        Displays the DataFrame in a Jupyter environment.
+        """
         try:
             start = message.find('"s":[')
             ends = message.find(',"ns":{')
@@ -27,7 +38,7 @@ class DataCollector:
             if isinstance(fdata, list):
                 for item in fdata:
                     if 'v' in item:
-                        timestamp_utc = datetime.utcfromtimestamp(item['v'][0])  
+                        timestamp_utc = datetime.utcfromtimestamp(item['v'][0])
                         timestamp_ist = timestamp_utc.replace(tzinfo=pytz.utc).astimezone(ist)
                         item['v'][0] = timestamp_ist.strftime('%Y-%m-%d %H:%M:%S')
                         self.df.loc[len(self.df)] = item['v']
@@ -45,15 +56,22 @@ class DataCollector:
         display(self.df)
 
     def on_error(self, ws, error):
-        """Handles WebSocket errors."""
+        """
+        Callback for handling WebSocket errors.
+        """
         print(f"WebSocket Error: {error}")
 
     def on_close(self, ws, close_status_code, close_msg):
-        """Handles WebSocket closure."""
+        """
+        Callback when the WebSocket connection is closed.
+        """
         print("WebSocket Closed")
 
     def on_open(self, ws):
-        """Sends initialization messages when WebSocket is opened."""
+        """
+        Callback when the WebSocket connection is opened.
+        Sends initialization messages to set up chart session and request data.
+        """
         print("WebSocket Connection Established!")
 
         def create_message(func, arg):
@@ -61,23 +79,29 @@ class DataCollector:
             msg = f"~m~{len(ms)}~m~{ms}"
             ws.send(msg)
 
-        session_id = "0.13918.2153_mum1-charts-26-webchart-16"
+        session_id = "0.13918.2153_mum1-charts-26-webchart-16"  # Hardcoded session ID
         create_message("chart_create_session", [session_id, ""])
         chart_id = '=' + json.dumps({"adjustment": "splits", "session": "regular", "symbol": self.symbol})
         create_message("resolve_symbol", [session_id, "sds_sym_1", chart_id])
         create_message("create_series", [session_id, "sds_1", "s1", "sds_sym_1", self.time_frame, self.period, ""])
 
     def start(self):
-        """Starts WebSocket connection."""
-        self.ws = websocket.WebSocketApp(self.socketUrl, 
-                                         on_message=self.on_message, 
-                                         on_error=self.on_error, 
+        """
+        Starts the WebSocket client and begins receiving real-time data.
+        """
+        self.ws = websocket.WebSocketApp(self.socketUrl,
+                                         on_message=self.on_message,
+                                         on_error=self.on_error,
                                          on_close=self.on_close)
         self.ws.on_open = self.on_open
         self.ws.run_forever()
 
-# Function to fetch live data
 def get_live_data(symbol="NSE:NIFTY", time_frame="5", period=100):
-    collector = DataCollector(symbol,time_frame,period)
+    """
+    Function to fetch live market data for a given symbol and timeframe.
+    Initializes the DataCollector and starts the WebSocket connection.
+    Returns the DataFrame containing candlestick data.
+    """
+    collector = DataCollector(symbol, time_frame, period)
     collector.start()
     return collector.df
