@@ -1,0 +1,46 @@
+~m~204~m~{
+    "m": "du",
+    "p": [
+        "cs_M02xX7wRg0iK",
+        {
+            "sds_1": {
+                "s": [
+                    {
+                        "i": 299,
+                        "v": [
+                            1760945700.0,
+                            25906.45,
+                            25906.7,
+                            25902.2,
+                            25903.85,
+                            201857.0
+                        ]
+                    }
+                ],
+                "ns": {
+                    "d": "",
+                    "indexes": "nochange"
+                },
+                "t": "s1",
+                "lbs": {
+                    "bar_close_time": 1760945760
+                }
+            }
+        }
+    ]
+}~m~234~m~{
+    "m": "qsd",
+    "p": [
+        "qs_multiplexer_full_D2z2JVrarxk5",
+        {
+            "n": "={\"adjustment\":\"splits\",\"currency-id\":\"INR\",\"session\":\"regular\",\"symbol\":\"NSE:NIFTY\"}",
+            "s": "ok",
+            "v": {
+                "volume": 176928827.0,
+                "lp": 25903.85,
+                "chp": 0.75,
+                "ch": 194.0
+            }
+        }
+    ]
+}
