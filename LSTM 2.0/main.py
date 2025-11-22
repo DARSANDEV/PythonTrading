@@ -1,11 +1,11 @@
-from data_collector import get_live_data
+from data_collector import get_historic_data
 from indicators import add_indicators
 from lstm_model import train_lstm_model
 from data_preprocessing import preprocess_data
 import matplotlib.pyplot as plt
 
-# Step 1: Get live market data
-df = get_live_data()
+# Step 1: Get historic market data
+df = get_historic_data()
 
 # Step 2: Add indicators
 df = add_indicators(df)
