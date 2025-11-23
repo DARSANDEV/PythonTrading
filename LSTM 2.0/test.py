@@ -1,5 +1,5 @@
 from data_collector import get_live_data,get_historic_data
-from data_repository import save_historical_data_to_csv 
+from data_repository import save_historical_data_to_csv,get_latest_csv 
 from ticker_helper import generate_option_tickers
 print('welcome')
 #print(get_live_data())
@@ -24,6 +24,7 @@ def options_data_saving_test():
    }
    print(generate_option_tickers(index_symbol, expiry_date_str, None, option_settings))
 
-options_data_saving_test()
+#options_data_saving_test()
+print(get_latest_csv("NSE:NIFTY251125C26000"))
 
 print('App closed')

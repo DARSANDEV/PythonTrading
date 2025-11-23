@@ -71,7 +71,7 @@ def ticker_to_filename(ticker,file_format):
     """
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     safe_t = ticker.replace(":", "_")
-    filename = f"{safe_t}-V-{timestamp}.{format}"
+    filename = f"{safe_t}-V-{timestamp}.{file_format}"
     return filename
 # For testing purposes, you can call the main function directly
 def main():
