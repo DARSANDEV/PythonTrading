@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+pandas
+websocket-client
+python-dotenv
+pydantic-settings
+pytz
+ipython
