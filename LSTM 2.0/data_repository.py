@@ -4,7 +4,9 @@ import pandas as pd
 from datetime import datetime
 from data_collector import get_historic_data
 from ticker_helper import ticker_to_filename
-folder_path ='./data/'
+from config import settings
+
+stock_data_saving_path =settings.STOCK_DATA_SAVING_PATH
 
 
 def save_historical_for_tickers_to_csv(tickers, interval, count):
@@ -22,7 +24,7 @@ def save_historical_data_to_csv(ticker, interval, count):
         print(f"Saving data for {ticker}...")
         df = get_historic_data(ticker, interval, count)
         filename = ticker_to_filename(ticker,'csv')
-        full_path = os.path.join(folder_path, filename)
+        full_path = os.path.join(stock_data_saving_path, filename)
         df.to_csv(full_path, index=False)
         print(f"Saved {ticker} → {full_path}")
     except Exception as e:
@@ -39,7 +41,7 @@ def get_latest_csv(symbol):
         
         # Search pattern: safe_symbol*.csv in the folder_path
         search_pattern = f"{safe_symbol}*.csv"
-        full_search_path = os.path.join(folder_path, search_pattern)
+        full_search_path = os.path.join(stock_data_saving_path, search_pattern)
         print(f"Searching in: {full_search_path}")
         files = glob.glob(full_search_path)
         

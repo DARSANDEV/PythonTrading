@@ -5,7 +5,8 @@ import pytz
 import websocket
 import time
 from IPython.display import clear_output, display
-
+from config import settings
+ 
 # Set IST timezone
 ist = pytz.timezone('Asia/Kolkata')
 
@@ -24,7 +25,7 @@ class DataCollector:
         self.reconnect_delay = reconnect_delay
         self.df = pd.DataFrame(columns=['TimeStamp', 'Open', 'High', 'Low', 'Close', 'Volume'])
         self.ws = None
-        self.session_id = "0.13918.2153_mum1-charts-26-webchart-16"  # Hardcoded session ID
+        self.session_id = settings.SESSION_ID
         self.include_live_data = True
         self.include_historic_data = True
 
@@ -104,6 +105,8 @@ class DataCollector:
         def create_message(func, arg):
             ms = json.dumps({"m": func, "p": arg})
             msg = f"~m~{len(ms)}~m~{ms}"
+            if __debug__ or settings.DEBUG:
+                print("Sending Message:", msg)
             ws.send(msg)
 
         session_id = self.session_id

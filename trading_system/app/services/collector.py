@@ -69,14 +69,14 @@ class DataCollector:
         self.error_logs.append(f"WebSocket Error: {error}")
 
     def on_close(self, ws, close_status_code, close_msg):
-        # print(f" WebSocket Closed => Status code: {close_status_code}, message: {close_msg}")
+        print(f" WebSocket Closed => Status code: {close_status_code}, message: {close_msg}")
         if close_status_code == 1000 and self.include_live_data:
-            # print(f"Reconnecting in {self.reconnect_delay} seconds...")
+            print(f"Reconnecting in {self.reconnect_delay} seconds...")
             time.sleep(self.reconnect_delay)
             self.start()
 
     def on_open(self, ws):
-        # print(" WebSocket Connection Established!")
+        print(" WebSocket Connection Established!")
         def create_message(func, arg):
             ms = json.dumps({"m": func, "p": arg})
             msg = f"~m~{len(ms)}~m~{ms}"
@@ -97,7 +97,8 @@ class DataCollector:
             self.socketUrl,
             on_message=self.on_message,
             on_error=self.on_error,
-            on_close=self.on_close
+            on_close=self.on_close,
+            header={"Origin": "https://in.tradingview.com"}
         )
         self.ws.on_open = self.on_open
         self.ws.run_forever(ping_interval=30, ping_timeout=10)
