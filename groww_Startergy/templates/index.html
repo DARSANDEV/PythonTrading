@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nifty Option Real-Time Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Premium CSS Reset and Variables */
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: rgba(17, 24, 39, 0.7);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --accent-glow: rgba(59, 130, 246, 0.15);
+            
+            --success-color: #10b981;
+            --success-bg: rgba(16, 185, 129, 0.15);
+            --danger-color: #ef4444;
+            --danger-bg: rgba(239, 68, 68, 0.15);
+            
+            --blue-color: #3b82f6;
+            --purple-color: #8b5cf6;
+            --transition-speed: 0.3s;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.1) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(139, 92, 246, 0.1) 0px, transparent 50%);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            padding: 2rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.75rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60a5fa, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            background: rgba(31, 41, 55, 0.5);
+            border: 1px solid var(--card-border);
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--danger-color);
+            box-shadow: 0 0 8px var(--danger-color);
+        }
+
+        .status-dot.connected {
+            background-color: var(--success-color);
+            box-shadow: 0 0 8px var(--success-color);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes alert-glow {
+            0% { border-color: rgba(239, 68, 68, 0.2); box-shadow: 0 0 0 0px rgba(239, 68, 68, 0.1); }
+            50% { border-color: rgba(239, 68, 68, 0.7); box-shadow: 0 0 8px 2px rgba(239, 68, 68, 0.25); }
+            100% { border-color: rgba(239, 68, 68, 0.2); box-shadow: 0 0 0 0px rgba(239, 68, 68, 0.1); }
+        }
+
+        /* Container & Layout */
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+        /* Hero Spot Display */
+        .hero-section {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .hero-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .spot-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.05));
+            border-color: rgba(59, 130, 246, 0.2);
+        }
+
+        .spot-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .spot-label {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .spot-price {
+            font-family: 'Outfit', sans-serif;
+            font-size: 3rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+            transition: color 0.15s ease;
+        }
+
+        /* Live update flash animation */
+        .flash-green {
+            animation: flashGreen 0.6s ease-out;
+        }
+        .flash-red {
+            animation: flashRed 0.6s ease-out;
+        }
+
+        @keyframes flashGreen {
+            0% { color: var(--success-color); text-shadow: 0 0 10px var(--success-color); }
+            100% { color: var(--text-primary); text-shadow: none; }
+        }
+        @keyframes flashRed {
+            0% { color: var(--danger-color); text-shadow: 0 0 10px var(--danger-color); }
+            100% { color: var(--text-primary); text-shadow: none; }
+        }
+
+        /* Summary Info Grid */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .summary-item {
+            background: rgba(31, 41, 55, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 12px;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .summary-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+
+        .summary-value {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* Options Side-by-Side Dashboard */
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 1024px) {
+            .options-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .option-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .option-type-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .ce-title { color: var(--blue-color); }
+        .pe-title { color: var(--purple-color); }
+
+        .price-compare-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .price-box {
+            background: rgba(31, 41, 55, 0.4);
+            border-radius: 12px;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .price-box-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .price-box-value {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.85rem;
+            font-weight: 700;
+        }
+
+        /* Valuation Difference Banner */
+        .valuation-status {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .valuation-status.undervalued {
+            background-color: var(--success-bg);
+            color: var(--success-color);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+        }
+
+        .valuation-status.overvalued {
+            background-color: var(--danger-bg);
+            color: var(--danger-color);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+        }
+
+        /* Greeks Table */
+        .greeks-title {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.75rem;
+        }
+
+        .toggle-greeks-btn:hover {
+            color: var(--text-primary) !important;
+        }
+        .collapsed-table {
+            display: none !important;
+        }
+        .rotate-180 {
+            transform: rotate(180deg);
+        }
+        .text-right {
+            text-align: right !important;
+        }
+
+        .greeks-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .greeks-table th, .greeks-table td {
+            padding: 0.65rem 0.5rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .greeks-table th {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .greek-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .greek-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
+            text-align: right;
+            font-weight: 500;
+        }
+
+        /* Logger Terminal */
+        .terminal-card {
+            background: rgba(10, 15, 25, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            padding: 1.25rem;
+            border-radius: 12px;
+            color: #10b981;
+            height: 150px;
+            overflow-y: auto;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .terminal-header {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .terminal-row {
+            margin-bottom: 0.25rem;
+            line-height: 1.4;
+        }
+
+        .terminal-time {
+            color: #60a5fa;
+            margin-right: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #60a5fa;"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+            Nifty Option Pricing
+        </h1>
+        <div class="status-badge">
+            <div id="statusDot" class="status-dot"></div>
+            <span id="statusText">Disconnected</span>
+        </div>
+    </header>
+
+    <div class="container">
+        
+        <!-- Hero Section -->
+        <div class="hero-section">
+            <div class="glass-card spot-card">
+                <div class="spot-info">
+                    <span class="spot-label">NIFTY 50 INDEX <span id="spotTime" style="font-size: 0.75rem; color: var(--text-secondary); font-weight: normal; margin-left: 0.25rem; text-transform: none;"></span></span>
+                    <span id="spotPrice" class="spot-price">0.00</span>
+                </div>
+                <div style="text-align: right;">
+                    <span class="spot-label" style="display:block; margin-bottom: 0.5rem;">ATM Strike</span>
+                    <span id="atmStrike" style="font-family: 'Outfit', sans-serif; font-size: 2.25rem; font-weight: 700; color: #60a5fa;">0</span>
+                </div>
+            </div>
+            
+            <div class="glass-card">
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <span class="summary-label">Expiry Date</span>
+                        <span id="expiryDate" class="summary-value">-</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Days to Expiry</span>
+                        <span id="daysRemaining" class="summary-value">-</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Risk-free Rate</span>
+                        <span id="interestRate" class="summary-value">7.00%</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Last Updated</span>
+                        <span id="lastUpdate" class="summary-value">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Options Side-by-Side Dashboard -->
+        <div class="options-grid">
+            
+            <!-- Call Option (CE) Card -->
+            <div class="glass-card">
+                <div class="option-header">
+                    <span class="option-type-title ce-title">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+                        Call Option (CE)
+                    </span>
+                    <span id="callToken" style="font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; color: var(--text-secondary);">Token: -</span>
+                </div>
+                
+                <div class="price-compare-container">
+                    <div class="price-box">
+                        <span class="price-box-title">Market LTP <span id="callTime" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: normal; margin-left: 0.25rem; text-transform: none;"></span></span>
+                        <span id="callLtp" class="price-box-value" style="color: #60a5fa;">0.00</span>
+                    </div>
+                    <div class="price-box">
+                        <span class="price-box-title">Theoretical BSM</span>
+                        <span id="callTheo" class="price-box-value" style="color: var(--text-primary);">0.00</span>
+                    </div>
+                </div>
+                
+                <div id="callValuationStatus" class="valuation-status undervalued">
+                    <span>Valuation Difference</span>
+                    <span id="callValuationDiff">0.00</span>
+                </div>
+                
+
+                <div class="greeks-header-container" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <div class="greeks-title" style="margin-bottom: 0;">Greeks & Parameters</div>
+                    <button class="toggle-greeks-btn" onclick="toggleGreeks('callGreeksTable', this)" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.8rem; font-weight: 500; display: flex; align-items: center; gap: 0.25rem;">
+                        <span>Collapse</span>
+                        <svg class="chevron-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><path d="m18 15-6-6-6 6"/></svg>
+                    </button>
+                </div>
+                <table id="callGreeksTable" class="greeks-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th style="text-align: right;">Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="greek-name">Implied Volatility (IV)</td>
+                            <td id="callIv" class="greek-val" style="color: #60a5fa;">0.00%</td>
+                        </tr>
+                        <tr>
+                            <td class="greek-name">Delta (δ)</td>
+                            <td id="callDelta" class="greek-val">0.0000</td>
+                        </tr>
+                        <tr>
+                            <td class="greek-name">Gamma (γ)</td>
+                            <td id="callGamma" class="greek-val">0.0000</td>
+                        </tr>
+                        <tr>
+                            <td class="greek-name">Vega (ν, per 1% vol)</td>
+                            <td id="callVega" class="greek-val">0.0000</td>
+                        </tr>
+                        <tr>
+                            <td class="greek-name">Theta (θ, daily decay)</td>
+                            <td id="callTheta" class="greek-val">0.0000</td>
+                        </tr>
+                        <tr>
+                            <td class="greek-name">Rho (ρ, per 1% rate)</td>
+                            <td id="callRho" class="greek-val">0.0000</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Put Option (PE) Card -->
+            <div class="glass-card">
+                <div class="option-header">
+                    <span class="option-type-title pe-title">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                        Put Option (PE)
+                    </span>
+                    <span id="putToken" style="font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; color: var(--text-secondary);">Token: -</span>
+                </div>
+                
+                <div class="price-compare-container">
+                    <div class="price-box">
+                        <span class="price-box-title">Market LTP <span id="putTime" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: normal; margin-left: 0.25rem; text-transform: none;"></span></span>
+                        <span id="putLtp" class="price-box-value" style="color: #c084fc;">0.00</span>
+                    </div>
+                    <div class="price-box">
+                        <span class="price-box-title">Theoretical BSM</span>
+                        <span id="putTheo" class="price-box-value" style="color: var(--text-primary);">0.00</span>
+                    </div>
+                </div>
+                
+                <div id="putValuationStatus" class="valuation-status overvalued">
+                    <span>Valuation Difference</span>
+                    <span id="putValuationDiff">0.00</span>
+                </div>
+                
+
+                <div class="greeks-header-container" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <div class="greeks-title" style="margin-bottom: 0;">Greeks & Parameters</div>
+                    <button class="toggle-greeks-btn" onclick="toggleGreeks('putGreeksTable', this)" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.8rem; font-weight: 500; display: flex; align-items: center; gap: 0.25rem;">
+                        <span>Collapse</span>
+                        <svg class="chevron-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><path d="m18 15-6-6-6 6"/></svg>
+                    </button>
+                </div>
+                <table id="putGreeksTable" class="greeks-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th style="text-align: right;">Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="greek-name">Implied Volatility (IV)</td>
+                            <td id="putIv" class="greek-val" style="color: #c084fc;">0.00%</td>
+                        </tr>
+                        <tr>
+                            <td class="greek-name">Delta (δ)</td>
+                            <td id="putDelta" class="greek-val">0.0000</td>
+                        </tr>
+                        <tr>
+                            <td class="greek-name">Gamma (γ)</td>
+                            <td id="putGamma" class="greek-val">0.0000</td>
+                        </tr>
+                        <tr>
+                            <td class="greek-name">Vega (ν, per 1% vol)</td>
+                            <td id="putVega" class="greek-val">0.0000</td>
+                        </tr>
+                        <tr>
+                            <td class="greek-name">Theta (θ, daily decay)</td>
+                            <td id="putTheta" class="greek-val">0.0000</td>
+                        </tr>
+                        <tr>
+                            <td class="greek-name">Rho (ρ, per 1% rate)</td>
+                            <td id="putRho" class="greek-val">0.0000</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+
+        <!-- Real-Time Movement Matrix -->
+        <div class="glass-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+                <div class="greeks-title" style="margin-bottom: 0;">Real-Time Movement Matrix</div>
+                <div class="column-toggles" style="display: flex; gap: 0.75rem; flex-wrap: wrap; font-size: 0.75rem; color: var(--text-secondary);">
+                    <span style="font-weight: 600; color: var(--text-primary);">Columns:</span>
+                    <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+                        <input type="checkbox" checked onchange="toggleColumn(1, this.checked)"> Nifty
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+                        <input type="checkbox" checked onchange="toggleColumn(2, this.checked)"> Call Mkt
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+                        <input type="checkbox" checked onchange="toggleColumn(3, this.checked)"> Call BSM
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+                        <input type="checkbox" checked onchange="toggleColumn(4, this.checked)"> Call Dev
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+                        <input type="checkbox" checked onchange="toggleColumn(5, this.checked)"> Call Z
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+                        <input type="checkbox" checked onchange="toggleColumn(6, this.checked)"> Put Mkt
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+                        <input type="checkbox" checked onchange="toggleColumn(7, this.checked)"> Put BSM
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+                        <input type="checkbox" checked onchange="toggleColumn(8, this.checked)"> Put Dev
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+                        <input type="checkbox" checked onchange="toggleColumn(9, this.checked)"> Put Z
+                    </label>
+                </div>
+            </div>
+            
+            <table class="greeks-table" id="movementTable" style="table-layout: fixed; width: 100%;">
+                <thead>
+                    <tr>
+                        <th style="width: 8%">Timeframe</th>
+                        <th class="text-right" style="width: 9%">Nifty</th>
+                        <th class="text-right" style="width: 10%">Call Mkt</th>
+                        <th class="text-right" style="width: 10%">Call BSM</th>
+                        <th class="text-right" style="width: 10%">Call Dev</th>
+                        <th class="text-right" style="width: 11%">Call Z</th>
+                        <th class="text-right" style="width: 10%">Put Mkt</th>
+                        <th class="text-right" style="width: 10%">Put BSM</th>
+                        <th class="text-right" style="width: 10%">Put Dev</th>
+                        <th class="text-right" style="width: 11%">Put Z</th>
+                    </tr>
+                </thead>
+                <tbody id="movementTableBody">
+                    <tr id="row_10s">
+                        <td class="greek-name">10 Sec</td>
+                        <td id="m_10s_spot" class="greek-val text-right">0.00</td>
+                        <td id="m_10s_call_ltp" class="greek-val text-right">0.00</td>
+                        <td id="m_10s_call_theo" class="greek-val text-right">0.00</td>
+                        <td id="m_10s_call_dev" class="greek-val text-right">0.00</td>
+                        <td id="m_10s_call_z" class="greek-val text-right">0.00</td>
+                        <td id="m_10s_put_ltp" class="greek-val text-right">0.00</td>
+                        <td id="m_10s_put_theo" class="greek-val text-right">0.00</td>
+                        <td id="m_10s_put_dev" class="greek-val text-right">0.00</td>
+                        <td id="m_10s_put_z" class="greek-val text-right">0.00</td>
+                    </tr>
+                    <tr id="row_30s">
+                        <td class="greek-name">30 Sec</td>
+                        <td id="m_30s_spot" class="greek-val text-right">0.00</td>
+                        <td id="m_30s_call_ltp" class="greek-val text-right">0.00</td>
+                        <td id="m_30s_call_theo" class="greek-val text-right">0.00</td>
+                        <td id="m_30s_call_dev" class="greek-val text-right">0.00</td>
+                        <td id="m_30s_call_z" class="greek-val text-right">0.00</td>
+                        <td id="m_30s_put_ltp" class="greek-val text-right">0.00</td>
+                        <td id="m_30s_put_theo" class="greek-val text-right">0.00</td>
+                        <td id="m_30s_put_dev" class="greek-val text-right">0.00</td>
+                        <td id="m_30s_put_z" class="greek-val text-right">0.00</td>
+                    </tr>
+                    <tr id="row_1m">
+                        <td class="greek-name">1 Min</td>
+                        <td id="m_1m_spot" class="greek-val text-right">0.00</td>
+                        <td id="m_1m_call_ltp" class="greek-val text-right">0.00</td>
+                        <td id="m_1m_call_theo" class="greek-val text-right">0.00</td>
+                        <td id="m_1m_call_dev" class="greek-val text-right">0.00</td>
+                        <td id="m_1m_call_z" class="greek-val text-right">0.00</td>
+                        <td id="m_1m_put_ltp" class="greek-val text-right">0.00</td>
+                        <td id="m_1m_put_theo" class="greek-val text-right">0.00</td>
+                        <td id="m_1m_put_dev" class="greek-val text-right">0.00</td>
+                        <td id="m_1m_put_z" class="greek-val text-right">0.00</td>
+                    </tr>
+                    <tr id="row_5m">
+                        <td class="greek-name">5 Min</td>
+                        <td id="m_5m_spot" class="greek-val text-right">0.00</td>
+                        <td id="m_5m_call_ltp" class="greek-val text-right">0.00</td>
+                        <td id="m_5m_call_theo" class="greek-val text-right">0.00</td>
+                        <td id="m_5m_call_dev" class="greek-val text-right">0.00</td>
+                        <td id="m_5m_call_z" class="greek-val text-right">0.00</td>
+                        <td id="m_5m_put_ltp" class="greek-val text-right">0.00</td>
+                        <td id="m_5m_put_theo" class="greek-val text-right">0.00</td>
+                        <td id="m_5m_put_dev" class="greek-val text-right">0.00</td>
+                        <td id="m_5m_put_z" class="greek-val text-right">0.00</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Terminal Logs -->
+        <div>
+            <div class="terminal-header">
+                <span>Real-Time Processing Log</span>
+                <span style="font-size: 0.7rem; color: #10b981;">● Online Stream</span>
+            </div>
+            <div id="terminal" class="terminal-card">
+                <div class="terminal-row"><span class="terminal-time">[System]</span> Initializing connection dashboard...</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // WebSocket Connection
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
+        
+        let ws;
+        let lastSpot = 0.0;
+        let lastCallLtp = 0.0;
+        let lastPutLtp = 0.0;
+
+        function connect() {
+            logTerminal("Connecting to pricing socket endpoint...");
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                document.getElementById('statusDot').className = 'status-dot connected';
+                document.getElementById('statusText').innerText = 'Connected';
+                logTerminal("WebSocket connection successfully established.");
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                updateUI(data);
+            };
+
+            ws.onclose = () => {
+                document.getElementById('statusDot').className = 'status-dot';
+                document.getElementById('statusText').innerText = 'Disconnected';
+                logTerminal("WebSocket disconnected. Retrying in 3 seconds...", true);
+                setTimeout(connect, 3000);
+            };
+
+            ws.onerror = (err) => {
+                logTerminal("WebSocket encountered an error.", true);
+            };
+        }
+
+        function logTerminal(message, isError = false) {
+            const term = document.getElementById('terminal');
+            const row = document.createElement('div');
+            row.className = 'terminal-row';
+            if (isError) {
+                row.style.color = '#ef4444';
+            }
+            const time = new Date().toLocaleTimeString();
+            row.innerHTML = `<span class="terminal-time">[${time}]</span> ${message}`;
+            term.appendChild(row);
+            term.scrollTop = term.scrollHeight;
+        }
+
+        function updateUI(data) {
+            // Check changes for flash animations
+            const spotEl = document.getElementById('spotPrice');
+            const callEl = document.getElementById('callLtp');
+            const putEl = document.getElementById('putLtp');
+
+            if (lastSpot !== 0.0 && data.spot_price !== lastSpot) {
+                spotEl.className = 'spot-price ' + (data.spot_price > lastSpot ? 'flash-green' : 'flash-red');
+            }
+            if (lastCallLtp !== 0.0 && data.call_ltp !== lastCallLtp) {
+                callEl.className = 'price-box-value ' + (data.call_ltp > lastCallLtp ? 'flash-green' : 'flash-red');
+            }
+            if (lastPutLtp !== 0.0 && data.put_ltp !== lastPutLtp) {
+                putEl.className = 'price-box-value ' + (data.put_ltp > lastPutLtp ? 'flash-green' : 'flash-red');
+            }
+
+            // Update state trackers
+            lastSpot = data.spot_price;
+            lastCallLtp = data.call_ltp;
+            lastPutLtp = data.put_ltp;
+
+            // Nifty Spot & ATM Strike
+            spotEl.innerText = data.spot_price.toFixed(2);
+            document.getElementById('spotTime').innerText = data.spot_time ? `(${data.spot_time})` : '';
+            document.getElementById('atmStrike').innerText = data.atm_strike.toFixed(0);
+
+            // Summary grid info
+            document.getElementById('expiryDate').innerText = data.expiry_date;
+            document.getElementById('daysRemaining').innerText = data.days_remaining.toFixed(1) + " days";
+            document.getElementById('interestRate').innerText = (data.r * 100).toFixed(2) + "%";
+            document.getElementById('lastUpdate').innerText = data.last_update || '-';
+
+            // Call Option Data
+            callEl.innerText = data.call_ltp.toFixed(2);
+            document.getElementById('callTime').innerText = data.call_time ? `(${data.call_time})` : '';
+            document.getElementById('callTheo').innerText = data.call_theo.toFixed(2);
+            document.getElementById('callToken').innerText = 'Token: ' + (data.call_token || 'N/A');
+            document.getElementById('callIv').innerText = data.call_iv.toFixed(2) + '%';
+            
+            const callDiff = data.call_ltp - data.call_theo;
+            const callDiffText = (callDiff >= 0 ? '+' : '') + callDiff.toFixed(2);
+            document.getElementById('callValuationDiff').innerText = callDiffText;
+            
+            const callValBanner = document.getElementById('callValuationStatus');
+            if (callDiff < 0) {
+                callValBanner.className = 'valuation-status undervalued';
+                callValBanner.firstElementChild.innerText = 'Market Undervalued (Buy CE)';
+            } else {
+                callValBanner.className = 'valuation-status overvalued';
+                callValBanner.firstElementChild.innerText = 'Market Overvalued (Sell CE)';
+            }
+
+            document.getElementById('callDelta').innerText = data.call_delta.toFixed(4);
+            document.getElementById('callGamma').innerText = data.call_gamma.toFixed(6);
+            document.getElementById('callVega').innerText = data.call_vega.toFixed(4);
+            document.getElementById('callTheta').innerText = data.call_theta.toFixed(4);
+            document.getElementById('callRho').innerText = data.call_rho.toFixed(4);
+
+            // Put Option Data
+            putEl.innerText = data.put_ltp.toFixed(2);
+            document.getElementById('putTime').innerText = data.put_time ? `(${data.put_time})` : '';
+            document.getElementById('putTheo').innerText = data.put_theo.toFixed(2);
+            document.getElementById('putToken').innerText = 'Token: ' + (data.put_token || 'N/A');
+            document.getElementById('putIv').innerText = data.put_iv.toFixed(2) + '%';
+
+            const putDiff = data.put_ltp - data.put_theo;
+            const putDiffText = (putDiff >= 0 ? '+' : '') + putDiff.toFixed(2);
+            document.getElementById('putValuationDiff').innerText = putDiffText;
+            
+            const putValBanner = document.getElementById('putValuationStatus');
+            if (putDiff < 0) {
+                putValBanner.className = 'valuation-status undervalued';
+                putValBanner.firstElementChild.innerText = 'Market Undervalued (Buy PE)';
+            } else {
+                putValBanner.className = 'valuation-status overvalued';
+                putValBanner.firstElementChild.innerText = 'Market Overvalued (Sell PE)';
+            }
+
+            document.getElementById('putDelta').innerText = data.put_delta.toFixed(4);
+            document.getElementById('putGamma').innerText = data.put_gamma.toFixed(6);
+            document.getElementById('putVega').innerText = data.put_vega.toFixed(4);
+            document.getElementById('putTheta').innerText = data.put_theta.toFixed(4);
+            document.getElementById('putRho').innerText = data.put_rho.toFixed(4);
+
+            // Update performance timeframes
+            if (data.timeframes) {
+                const labels = ["10s", "30s", "1m", "5m"];
+                labels.forEach(lbl => {
+                    const tf = data.timeframes[lbl];
+                    if (tf) {
+                        document.getElementById(`m_${lbl}_spot`).innerHTML = formatDelta(tf.spot);
+                        document.getElementById(`m_${lbl}_call_ltp`).innerHTML = formatDelta(tf.call_ltp);
+                        document.getElementById(`m_${lbl}_call_theo`).innerHTML = formatDelta(tf.call_theo);
+                        document.getElementById(`m_${lbl}_call_dev`).innerHTML = formatDelta(tf.call_ltp - tf.call_theo);
+                        document.getElementById(`m_${lbl}_call_z`).innerHTML = formatZScore(tf.call_zscore);
+                        document.getElementById(`m_${lbl}_put_ltp`).innerHTML = formatDelta(tf.put_ltp);
+                        document.getElementById(`m_${lbl}_put_theo`).innerHTML = formatDelta(tf.put_theo);
+                        document.getElementById(`m_${lbl}_put_dev`).innerHTML = formatDelta(tf.put_ltp - tf.put_theo);
+                        document.getElementById(`m_${lbl}_put_z`).innerHTML = formatZScore(tf.put_zscore);
+                    }
+                });
+            }
+
+            logTerminal(`Tick updated. Nifty Spot: ${data.spot_price.toFixed(2)} | CE LTP: ${data.call_ltp.toFixed(2)} | PE LTP: ${data.put_ltp.toFixed(2)}`);
+        }
+
+        function formatDelta(val) {
+            if (val === undefined || isNaN(val)) return '0.00';
+            const text = (val >= 0 ? '+' : '') + val.toFixed(2);
+            if (val > 0.001) {
+                return `<span style="color: var(--success-color); font-weight: 600;">${text}</span>`;
+            } else if (val < -0.001) {
+                return `<span style="color: var(--danger-color); font-weight: 600;">${text}</span>`;
+            } else {
+                return `<span style="color: var(--text-secondary);">${text}</span>`;
+            }
+        }
+
+        function formatZScore(zScore) {
+            if (zScore === undefined || isNaN(zScore)) return '0.00';
+            const text = (zScore >= 0 ? '+' : '') + zScore.toFixed(2);
+            const absZ = Math.abs(zScore);
+            if (absZ >= 2.2) {
+                return `<span style="color: #ef4444; font-weight: 700; background: rgba(239, 68, 68, 0.15); padding: 0.15rem 0.35rem; border-radius: 4px; border: 1px solid rgba(239, 68, 68, 0.3); font-family: 'JetBrains Mono', monospace;">${text}</span>`;
+            } else if (absZ >= 1.5) {
+                return `<span style="color: #f59e0b; font-weight: 600; background: rgba(245, 158, 11, 0.08); padding: 0.15rem 0.35rem; border-radius: 4px; border: 1px solid rgba(245, 158, 11, 0.2); font-family: 'JetBrains Mono', monospace;">${text}</span>`;
+            } else {
+                return `<span style="color: var(--text-secondary); font-family: 'JetBrains Mono', monospace;">${text}</span>`;
+            }
+        }
+
+        function toggleGreeks(tableId, button) {
+            const table = document.getElementById(tableId);
+            const isCollapsed = table.classList.toggle('collapsed-table');
+            const btnText = button.querySelector('span');
+            const icon = button.querySelector('.chevron-icon');
+            
+            if (isCollapsed) {
+                btnText.innerText = 'Expand';
+                icon.classList.add('rotate-180');
+            } else {
+                btnText.innerText = 'Collapse';
+                icon.classList.remove('rotate-180');
+            }
+        }
+
+        function toggleColumn(colIndex, show) {
+            const table = document.getElementById('movementTable');
+            const rows = table.rows;
+            for (let i = 0; i < rows.length; i++) {
+                const cells = rows[i].cells;
+                if (cells[colIndex]) {
+                    cells[colIndex].style.display = show ? '' : 'none';
+                }
+            }
+        }
+
+        // Initialize connection
+        connect();
+    </script>
+</body>
+</html>
