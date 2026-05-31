@@ -10,7 +10,7 @@ import math
 from collections import deque
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, FileResponse
-from option import BlackScholes
+from option import BlackScholes, calculate_implied_volatility
 
 # Load environment variables from .env file
 try:
@@ -50,6 +50,7 @@ state = {
     "call_ltp": 0.0,
     "call_token": None,
     "call_iv": 12.0,
+    "call_ref_iv": 12.0,
     "call_theo": 0.0,
     "call_delta": 0.0,
     "call_gamma": 0.0,
@@ -61,6 +62,7 @@ state = {
     "put_ltp": 0.0,
     "put_token": None,
     "put_iv": 12.0,
+    "put_ref_iv": 12.0,
     "put_theo": 0.0,
     "put_delta": 0.0,
     "put_gamma": 0.0,
@@ -125,8 +127,32 @@ def recalculate_greeks_and_prices():
     if state["spot_price"] <= 0 or state["atm_strike"] <= 0 or state["T"] <= 0:
         return
 
-    # Call Valuation & Greeks
-    bs_call = BlackScholes(state["spot_price"], state["atm_strike"], state["T"], state["r"], state["call_iv"] / 100.0)
+    # Calculate live Implied Volatilities based on current LTP
+    if state["call_ltp"] > 0:
+        state["call_iv"] = calculate_implied_volatility(
+            state["call_ltp"], 
+            state["spot_price"], 
+            state["atm_strike"], 
+            state["T"], 
+            state["r"], 
+            option_type="call"
+        )
+    if state["put_ltp"] > 0:
+        state["put_iv"] = calculate_implied_volatility(
+            state["put_ltp"], 
+            state["spot_price"], 
+            state["atm_strike"], 
+            state["T"], 
+            state["r"], 
+            option_type="put"
+        )
+
+    # Use the stable reference IV for BSM valuation to measure lagging/leading deviations
+    ref_call_iv = state.get("call_ref_iv") or state["call_iv"] or 12.0
+    ref_put_iv = state.get("put_ref_iv") or state["put_iv"] or 12.0
+
+    # Call Valuation & Greeks (using reference IV)
+    bs_call = BlackScholes(state["spot_price"], state["atm_strike"], state["T"], state["r"], ref_call_iv / 100.0)
     state["call_theo"] = bs_call.call_price()
     state["call_delta"] = bs_call.call_delta()
     state["call_gamma"] = bs_call.gamma()
@@ -134,8 +160,8 @@ def recalculate_greeks_and_prices():
     state["call_theta"] = bs_call.call_theta()
     state["call_rho"] = bs_call.call_rho()
 
-    # Put Valuation & Greeks
-    bs_put = BlackScholes(state["spot_price"], state["atm_strike"], state["T"], state["r"], state["put_iv"] / 100.0)
+    # Put Valuation & Greeks (using reference IV)
+    bs_put = BlackScholes(state["spot_price"], state["atm_strike"], state["T"], state["r"], ref_put_iv / 100.0)
     state["put_theo"] = bs_put.put_price()
     state["put_delta"] = bs_put.put_delta()
     state["put_gamma"] = bs_put.gamma()
@@ -468,11 +494,13 @@ def start_groww_feed(api_token, expiry_date):
             if ce_data:
                 state["call_ltp"] = float(ce_data.get("ltp") or ce_data.get("lastPrice") or 0.0)
                 state["call_iv"] = float(ce_data.get("iv") or ce_data.get("impliedVolatility") or 12.0)
+                state["call_ref_iv"] = state["call_iv"]
                 state["call_token"] = resolve_token(ce_data)
                 
             if pe_data:
                 state["put_ltp"] = float(pe_data.get("pe") or pe_data.get("lastPrice") or pe_data.get("ltp") or 0.0)
                 state["put_iv"] = float(pe_data.get("iv") or pe_data.get("impliedVolatility") or 12.0)
+                state["put_ref_iv"] = state["put_iv"]
                 state["put_token"] = resolve_token(pe_data)
 
             recalculate_greeks_and_prices()

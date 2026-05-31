@@ -8,6 +8,46 @@ def normal_pdf(x):
     """Probability density function for standard normal distribution."""
     return math.exp(-0.5 * x**2) / math.sqrt(2.0 * math.pi)
 
+def calculate_implied_volatility(market_price, S, K, T, r, option_type="call", max_iter=100, tolerance=1e-4):
+    """
+    Calculate the implied volatility of an option using the Bisection method.
+    Returns the IV as a percentage (e.g. 12.5% as 12.5).
+    """
+    if market_price <= 0 or S <= 0 or K <= 0 or T <= 0:
+        return 12.0  # default fallback
+        
+    low = 1e-5
+    high = 5.0
+    option_type = option_type.lower()
+    is_call = option_type in ("call", "ce", "c")
+    
+    def get_price(sig):
+        bs = BlackScholes(S, K, T, r, sig)
+        return bs.call_price() if is_call else bs.put_price()
+        
+    price_low = get_price(low)
+    price_high = get_price(high)
+    
+    # If market price is out of bounds, return the boundaries
+    if market_price <= price_low:
+        return low * 100.0
+    if market_price >= price_high:
+        return high * 100.0
+        
+    for _ in range(max_iter):
+        mid = (low + high) / 2.0
+        price_mid = get_price(mid)
+        
+        if abs(price_mid - market_price) < tolerance:
+            return mid * 100.0
+            
+        if price_mid < market_price:
+            low = mid
+        else:
+            high = mid
+            
+    return mid * 100.0
+
 class BlackScholes:
     """
     Black-Scholes-Merton Model Calculator for European options.

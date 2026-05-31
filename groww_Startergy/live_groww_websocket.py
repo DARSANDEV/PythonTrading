@@ -2,7 +2,7 @@ import sys
 import os
 import datetime
 import math
-from option import BlackScholes
+from option import BlackScholes, calculate_implied_volatility
 
 # Load environment variables from .env file
 try:
@@ -43,11 +43,13 @@ state = {
     "call_ltp": 0.0,
     "call_token": None,
     "call_iv": 12.0,
+    "call_ref_iv": 12.0,
     "call_theo": 0.0,
     
     "put_ltp": 0.0,
     "put_token": None,
     "put_iv": 12.0,
+    "put_ref_iv": 12.0,
     "put_theo": 0.0,
     
     "atm_strike": 0.0,
@@ -64,20 +66,44 @@ def recalculate_and_print():
     if state["spot_price"] <= 0 or state["atm_strike"] <= 0 or state["T"] <= 0:
         return
 
+    # Calculate live Implied Volatilities based on current LTP
+    if state["call_ltp"] > 0:
+        state["call_iv"] = calculate_implied_volatility(
+            state["call_ltp"], 
+            state["spot_price"], 
+            state["atm_strike"], 
+            state["T"], 
+            state["r"], 
+            option_type="call"
+        )
+    if state["put_ltp"] > 0:
+        state["put_iv"] = calculate_implied_volatility(
+            state["put_ltp"], 
+            state["spot_price"], 
+            state["atm_strike"], 
+            state["T"], 
+            state["r"], 
+            option_type="put"
+        )
+
+    # Use the stable reference IV for BSM valuation
+    ref_call_iv = state.get("call_ref_iv") or state["call_iv"] or 12.0
+    ref_put_iv = state.get("put_ref_iv") or state["put_iv"] or 12.0
+
     # Call valuation
-    bs_call = BlackScholes(state["spot_price"], state["atm_strike"], state["T"], state["r"], state["call_iv"] / 100.0)
+    bs_call = BlackScholes(state["spot_price"], state["atm_strike"], state["T"], state["r"], ref_call_iv / 100.0)
     state["call_theo"] = bs_call.call_price()
     call_diff = state["call_ltp"] - state["call_theo"]
 
     # Put valuation
-    bs_put = BlackScholes(state["spot_price"], state["atm_strike"], state["T"], state["r"], state["put_iv"] / 100.0)
+    bs_put = BlackScholes(state["spot_price"], state["atm_strike"], state["T"], state["r"], ref_put_iv / 100.0)
     state["put_theo"] = bs_put.put_price()
     put_diff = state["put_ltp"] - state["put_theo"]
 
     # Print in one row
     timestamp = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]
-    ce_str = f"CE LTP: {state['call_ltp']:.2f} (BSM: {state['call_theo']:.2f}, Diff: {call_diff:+.2f})"
-    pe_str = f"PE LTP: {state['put_ltp']:.2f} (BSM: {state['put_theo']:.2f}, Diff: {put_diff:+.2f})"
+    ce_str = f"CE LTP: {state['call_ltp']:.2f} (BSM: {state['call_theo']:.2f}, Diff: {call_diff:+.2f}, IV: {state['call_iv']:.2f}%)"
+    pe_str = f"PE LTP: {state['put_ltp']:.2f} (BSM: {state['put_theo']:.2f}, Diff: {put_diff:+.2f}, IV: {state['put_iv']:.2f}%)"
     
     # Print normally so the user has a scrolling log of ticks.
     print(
@@ -271,11 +297,13 @@ def main():
         if ce_data:
             state["call_ltp"] = float(ce_data.get("ltp") or ce_data.get("lastPrice") or 0.0)
             state["call_iv"] = float(ce_data.get("iv") or ce_data.get("impliedVolatility") or 12.0)
+            state["call_ref_iv"] = state["call_iv"]
             state["call_token"] = resolve_token(ce_data)
             
         if pe_data:
             state["put_ltp"] = float(pe_data.get("pe") or pe_data.get("lastPrice") or pe_data.get("ltp") or 0.0)
             state["put_iv"] = float(pe_data.get("iv") or pe_data.get("impliedVolatility") or 12.0)
+            state["put_ref_iv"] = state["put_iv"]
             state["put_token"] = resolve_token(pe_data)
 
         # Recalculate first time
