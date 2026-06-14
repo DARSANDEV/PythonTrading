@@ -1,0 +1,72 @@
+//@version=5
+strategy("9 EMA MTF Bounce (Tick Entry Enabled)", 
+     overlay=true, 
+     initial_capital=100000, 
+     default_qty_type=strategy.percent_of_equity, 
+     default_qty_value=20,
+     process_orders_on_close=true,
+     calc_on_every_tick=true)
+
+// --- Inputs ---
+trade_direction = input.string("BOTH", "Trade Direction", options=["CE", "PE", "BOTH"])
+tf_higher       = input.timeframe("5", "Higher Timeframe (EMA Source)")
+ema_length      = input.int(9, "EMA Length")
+atr_length      = input.int(14, "ATR Length")
+min_atr         = input.float(5.0, "Minimum ATR for Trade")
+adx_threshold   = input.int(15, "ADX Filter")
+
+// --- Technical Indicators ---
+ema_1m = ta.ema(close, ema_length)
+ema_5m = request.security(syminfo.tickerid, tf_higher, ta.ema(close, ema_length), barmerge.gaps_off, barmerge.lookahead_off)
+atr_1m = ta.atr(atr_length)
+
+// Standard ADX calculation
+[diplus, dimin, adx_1m] = ta.dmi(14, 14)
+
+// --- Signals & Filters ---
+trend_up   = ema_1m > ema_5m
+trend_down = ema_1m < ema_5m
+atr_ok     = atr_1m >= min_atr
+adx_ok     = adx_1m > adx_threshold
+
+// Price touches or reaches the 1m 9 EMA during the current bar
+price_reaches_ema = low <= ema_1m and high >= ema_1m
+
+ce_signal = trend_up and atr_ok and adx_ok and price_reaches_ema and (trade_direction == "CE" or trade_direction == "BOTH")
+pe_signal = trend_down and atr_ok and adx_ok and price_reaches_ema and (trade_direction == "PE" or trade_direction == "BOTH")
+
+// --- Trade Execution & State ---
+var float target_price = na
+var float sl_price = na
+
+if (strategy.position_size == 0)
+    if (ce_signal)
+        // Bullish bounce -> Buy Call Option (simulated via Long)
+        strategy.entry("LongCE", strategy.long, limit=ema_1m)
+        target_price := ema_1m + (0.5 * atr_1m)
+        sl_price := ema_1m - (0.5 * atr_1m)
+    else if (pe_signal)
+        // Bearish bounce -> Buy Put Option (simulated via Short)
+        strategy.entry("ShortPE", strategy.short, limit=ema_1m)
+        target_price := ema_1m - (0.5 * atr_1m)
+        sl_price := ema_1m + (0.5 * atr_1m)
+
+// If in trade, set target and SL exits
+if (strategy.position_size > 0)
+    strategy.exit("ExitLong", "LongCE", limit=target_price, stop=sl_price)
+else if (strategy.position_size < 0)
+    strategy.exit("ExitShort", "ShortPE", limit=target_price, stop=sl_price)
+
+// Intraday EOD exit - close at 3:00 PM
+is_eod = hour == 15 and minute >= 01
+if (is_eod)
+    if (strategy.position_size > 0)
+        strategy.close("LongCE", comment="EOD Force Close")
+    else if (strategy.position_size < 0)
+        strategy.close("ShortPE", comment="EOD Force Close")
+
+// --- Plotting for visual confirmation ---
+plot(ema_1m, color=color.blue, title="1m 9 EMA", linewidth=1)
+plot(ema_5m, color=color.purple, title="5m 9 EMA", linewidth=2)
+plot(strategy.position_size != 0 ? target_price : na, color=color.green, style=plot.style_linebr, title="Target")
+plot(strategy.position_size != 0 ? sl_price : na, color=color.red, style=plot.style_linebr, title="Stop Loss")
